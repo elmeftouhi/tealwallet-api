@@ -47,6 +47,7 @@ function(){
         Route::post('/user/logout', [UserController::class, 'logout']);
 
         //** Expense Category */
+        Route::post('category/total', [ExpenseCategoryController::class, 'total']);
         Route::resource('category', ExpenseCategoryController::class)->except(['create', 'edit']);
 
         //** Expense */

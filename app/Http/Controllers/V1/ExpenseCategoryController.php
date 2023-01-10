@@ -4,16 +4,13 @@ namespace App\Http\Controllers\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseCategory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class ExpenseCategoryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function index()
     {
         $collection = ExpenseCategory::orderBy('expense_category')->get();
@@ -26,12 +23,6 @@ class ExpenseCategoryController extends Controller
         ];
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
         $fields = $request->validate([
@@ -57,12 +48,6 @@ class ExpenseCategoryController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function show($id)
     {
         $category = ExpenseCategory::find($id);
@@ -75,13 +60,6 @@ class ExpenseCategoryController extends Controller
 
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
         $expense_category = ExpenseCategory::find($id);
@@ -111,12 +89,6 @@ class ExpenseCategoryController extends Controller
         ], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id)
     {
         $expense_category = ExpenseCategory::find($id);
@@ -125,5 +97,36 @@ class ExpenseCategoryController extends Controller
         }
         $expense_category->delete();
         return response(['message'=>'Category Was Deleted']);
+    }
+
+    public function total(Request $request){
+        if($request->id){
+            $categoryId = $request->id;
+            $year = $request->year;
+            if($year){
+                $expenses = auth()->user()
+                    ->expenses()->whereHas('category', 
+                    function(Builder $query) use ($categoryId){
+                        $query->where('id', '=', $categoryId);
+                    })
+                    ->whereYear('expense_date', $year)
+                    ->sum('amount');
+                return [
+                    'id'        =>      $categoryId,
+                    'year'      =>      $year,
+                    'total'     =>      $expenses
+                ];
+            }else{
+                $expenses = auth()->user()->expenses()->whereHas('category', 
+                    function(Builder $query) use ($categoryId){
+                        $query->where('id', '=', $categoryId);
+                    })->sum('amount');
+                return [
+                    'id'        =>      $categoryId,
+                    'total'     =>      $expenses
+                ];
+            }
+        }
+        return 0;
     }
 }
