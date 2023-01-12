@@ -11,16 +11,24 @@ use Illuminate\Http\Request;
 class ExpenseCategoryController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        $collection = ExpenseCategory::orderBy('expense_category')->get();
-        $categories = $collection->filter(function($c){
-            $c->expense_total = $c->expenses->sum('amount');
-            return $c;
-        });
-        return [
-            'expense_categories'    =>  $categories
-        ];
+        if($request->details){
+            $collection = ExpenseCategory::orderBy('level')->get();
+            $categories = $collection->filter(function($c){
+                $c->expense_total = $c->expenses->sum('amount');
+                return $c;
+            });
+            return [
+                'expense_categories'    =>  $categories
+            ];            
+        }else{
+            //$collection = ExpenseCategory::orderBy('expense_category')->get();
+            return [
+                'expense_categories'    =>  ExpenseCategory::orderBy('level')->get()
+            ];        
+        }
+
     }
 
     public function store(Request $request)
@@ -100,6 +108,8 @@ class ExpenseCategoryController extends Controller
     }
 
     public function total(Request $request){
+        $months = [];
+
         if($request->id){
             $categoryId = $request->id;
             $year = $request->year;
@@ -111,10 +121,23 @@ class ExpenseCategoryController extends Controller
                     })
                     ->whereYear('expense_date', $year)
                     ->sum('amount');
+
+                for($i=1; $i<13; $i++){
+                    array_push($months, [
+                        'month' =>  $i,
+                        'total' =>  $this->totalByMonth([
+                            'id'    =>  $categoryId,
+                            'month' =>  $i,
+                            'year'  =>  $year
+                        ])
+                    ]);
+                }
+
                 return [
                     'id'        =>      $categoryId,
                     'year'      =>      $year,
-                    'total'     =>      $expenses
+                    'total'     =>      $expenses,
+                    'months'    =>      $months
                 ];
             }else{
                 $expenses = auth()->user()->expenses()->whereHas('category', 
@@ -123,10 +146,28 @@ class ExpenseCategoryController extends Controller
                     })->sum('amount');
                 return [
                     'id'        =>      $categoryId,
-                    'total'     =>      $expenses
+                    'total'     =>      $expenses,
+                    'months'    =>      $months
                 ];
             }
         }
         return 0;
+    }
+
+    public function totalByMonth($parameters = []){
+        $id = isset($parameters['id'])? $parameters['id']: 0;
+        $month = isset($parameters['month'])? $parameters['month']: date('m');
+        $year = isset($parameters['year'])? $parameters['year']: date('Y');
+
+        $expenses = auth()->user()
+                    ->expenses()->whereHas('category', 
+                    function(Builder $query) use ($id){
+                        $query->where('id', '=', $id);
+                    })
+                    ->whereYear('expense_date', $year)
+                    ->whereMonth('expense_date', $month)
+                    ->sum('amount');
+        return $expenses;
+
     }
 }
